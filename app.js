@@ -1,9 +1,12 @@
- let tg = null;
+ // ===== TELEGRAM =====
+let tg = null;
 try {
   tg = window.Telegram.WebApp;
   tg.expand();
   tg.ready();
-} catch (e) { console.log('Not in Telegram'); }
+} catch (e) {
+  console.log('Not in Telegram');
+}
 
 function haptic(type) {
   try { tg.HapticFeedback.impactOccurred(type || 'light'); } catch (e) {}
@@ -12,10 +15,12 @@ function haptic(type) {
 function storageGet(key, def) {
   try { return JSON.parse(localStorage.getItem(key)) || def; } catch (e) { return def; }
 }
+
 function storageSet(key, val) {
   try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) {}
 }
 
+// ===== ДАННЫЕ =====
 let products = [];
 let cart = storageGet('m0rphine_cart', []);
 let favorites = storageGet('m0rphine_favs', []);
@@ -23,7 +28,7 @@ let currentFilter = 'all';
 let currentSort = 'default';
 let searchQuery = '';
 
-// ===== ФОН =====
+// ===== АНИМИРОВАННЫЙ ФОН =====
 const canvas = document.getElementById('bg-canvas');
 let ctx = null;
 let particles = [];
@@ -98,6 +103,7 @@ function applyFiltersAndSort() {
   if (currentFilter !== 'all') {
     list = list.filter(function (p) { return p.category === currentFilter; });
   }
+
   if (searchQuery) {
     list = list.filter(function (p) {
       return p.name.toLowerCase().includes(searchQuery) ||
@@ -124,7 +130,8 @@ function renderProducts(list) {
       '<div class="empty-state" style="grid-column:1/-1">' +
       '<div class="empty-state-icon">🕸️</div>' +
       '<div class="empty-state-title">Ничего не найдено</div>' +
-      '<div class="empty-state-text">Попробуй другие фильтры</div></div>';
+      '<div class="empty-state-text">Попробуй другие фильтры</div>' +
+      '</div>';
     return;
   }
 
@@ -134,36 +141,46 @@ function renderProducts(list) {
       : '<div class="product-emoji">' + (p.emoji || '🖤') + '</div>';
     const badge = p.badge ? '<div class="product-badge">' + p.badge + '</div>' : '';
     const fav = favorites.includes(p.id) ? ' active' : '';
+
     return '<div class="product-card" style="animation-delay:' + (i * 0.06) + 's" onclick="openProduct(' + p.id + ')">' +
       '<div class="product-image-wrapper">' + img + badge +
-      '<button class="product-favorite-btn' + fav + '" onclick="event.stopPropagation(); toggleFavorite(' + p.id + ')"><i class="fas fa-heart"></i></button></div>' +
+      '<button class="product-favorite-btn' + fav + '" onclick="event.stopPropagation(); toggleFavorite(' + p.id + ')">' +
+      '<i class="fas fa-heart"></i></button>' +
+      '</div>' +
       '<div class="product-info">' +
       '<div class="product-category">' + categoryName(p.category) + '</div>' +
       '<div class="product-name">' + p.name + '</div>' +
       '<div class="product-description">' + p.description + '</div>' +
       '<div class="product-footer">' +
       '<div class="product-price">' + p.price.toLocaleString() + ' ₽</div>' +
-      '<button class="add-to-cart-btn" onclick="event.stopPropagation(); addToCart(' + p.id + ')"><i class="fas fa-plus"></i></button>' +
+      '<button class="add-to-cart-btn" onclick="event.stopPropagation(); addToCart(' + p.id + ')">' +
+      '<i class="fas fa-plus"></i></button>' +
       '</div></div></div>';
   }).join('');
 }
 
+// ===== МОДАЛКА ТОВАРА =====
 function openProduct(id) {
   const p = products.find(function (x) { return x.id === id; });
   if (!p) return;
+
   const img = p.image
     ? '<img class="product-image" src="' + p.image + '" style="height:230px">'
     : '<div class="product-emoji" style="height:230px;display:flex;align-items:center;justify-content:center">' + (p.emoji || '🖤') + '</div>';
+
   const body = document.getElementById('modal-body');
   if (!body) return;
+
   body.innerHTML = img +
     '<div style="padding:22px">' +
     '<div class="product-category">' + categoryName(p.category) + '</div>' +
     '<h2 style="font-family:Cinzel,serif;margin:8px 0">' + p.name + '</h2>' +
     '<p style="color:var(--text-secondary);margin-bottom:15px">' + p.description + '</p>' +
     '<div class="product-price" style="font-size:26px;margin-bottom:18px">' + p.price.toLocaleString() + ' ₽</div>' +
-    '<button class="checkout-btn" onclick="addToCart(' + p.id + '); closeProductModal()"><i class="fas fa-cart-plus"></i> В корзину</button>' +
+    '<button class="checkout-btn" onclick="addToCart(' + p.id + '); closeProductModal()">' +
+    '<i class="fas fa-cart-plus"></i> В корзину</button>' +
     '</div>';
+
   document.getElementById('product-modal').style.display = 'flex';
   haptic();
 }
@@ -176,9 +193,11 @@ function closeProductModal() {
 function addToCart(id) {
   const p = products.find(function (x) { return x.id === id; });
   if (!p) return;
+
   const item = cart.find(function (i) { return i.id === id; });
   if (item) item.quantity += 1;
   else cart.push({ id: p.id, name: p.name, price: p.price, emoji: p.emoji, image: p.image, quantity: 1 });
+
   saveCart();
   showToast('✅ Добавлено в корзину');
   haptic('medium');
@@ -217,24 +236,36 @@ function openCart() {
   renderCart();
   document.getElementById('cart-modal').style.display = 'flex';
 }
-function viewCart() { toggleMenu(); openCart(); }
-function closeCart() { document.getElementById('cart-modal').style.display = 'none'; }
+
+function viewCart() {
+  toggleMenu();
+  openCart();
+}
+
+function closeCart() {
+  document.getElementById('cart-modal').style.display = 'none';
+}
 
 function renderCart() {
   const box = document.getElementById('cart-items');
   if (!box) return;
 
   if (!cart.length) {
-    box.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🛒</div>' +
+    box.innerHTML =
+      '<div class="empty-state">' +
+      '<div class="empty-state-icon">🛒</div>' +
       '<div class="empty-state-title">Корзина пуста</div>' +
-      '<div class="empty-state-text">Добавь что-нибудь тёмное</div></div>';
+      '<div class="empty-state-text">Добавь что-нибудь тёмное</div>' +
+      '</div>';
   } else {
     box.innerHTML = cart.map(function (i) {
       const img = i.image
         ? '<img src="' + i.image + '" style="width:100%;height:100%;object-fit:cover">'
         : (i.emoji || '🖤');
-      return '<div class="cart-item"><div class="cart-item-image">' + img + '</div>' +
-        '<div class="cart-item-info"><div class="cart-item-name">' + i.name + '</div>' +
+      return '<div class="cart-item">' +
+        '<div class="cart-item-image">' + img + '</div>' +
+        '<div class="cart-item-info">' +
+        '<div class="cart-item-name">' + i.name + '</div>' +
         '<div class="cart-item-price">' + (i.price * i.quantity).toLocaleString() + ' ₽</div>' +
         '<div class="cart-item-quantity">' +
         '<button class="qty-btn" onclick="changeQty(' + i.id + ', -1)">−</button>' +
@@ -252,28 +283,44 @@ function renderCart() {
   if (tot) tot.textContent = total.toLocaleString() + ' ₽';
 }
 
+// ===== ОФОРМЛЕНИЕ ЗАКАЗА (с диагностикой) =====
 function checkout() {
   if (!cart.length) { showToast('Корзина пуста!', 'error'); return; }
+
   const total = cart.reduce(function (s, i) { return s + i.price * i.quantity; }, 0);
   const itemsCount = cart.reduce(function (s, i) { return s + i.quantity; }, 0);
   const orderText = cart.map(function (i) { return i.name + ' ×' + i.quantity; }).join(', ');
+
   let username = 'unknown';
   try {
     const u = tg.initDataUnsafe.user || {};
     username = u.username || u.first_name || 'unknown';
   } catch (e) {}
 
+  let ok = false;
   try {
-    tg.sendData(JSON.stringify({ order: orderText, total: total, items: itemsCount, user: username }));
+    if (tg && typeof tg.sendData === 'function') {
+      tg.sendData(JSON.stringify({
+        order: orderText,
+        total: total,
+        items: itemsCount,
+        user: username
+      }));
+      ok = true;
+    }
   } catch (e) {
-    showToast('Заказ: ' + orderText);
+    showToast('Ошибка: ' + e.message, 'error');
   }
 
-  cart = [];
-  saveCart();
-  closeCart();
-  showToast('✅ Заказ отправлен!');
-  setTimeout(function () { try { tg.close(); } catch (e) {} }, 900);
+  if (ok) showToast('✅ Заказ отправлен боту!');
+  else showToast('❌ Не удалось отправить! Открой магазин с телефона', 'error');
+
+  if (ok) {
+    cart = [];
+    saveCart();
+    closeCart();
+    setTimeout(function () { try { tg.close(); } catch (e) {} }, 900);
+  }
 }
 
 // ===== ИЗБРАННОЕ =====
@@ -294,16 +341,22 @@ function toggleFavorite(id) {
 function showFavorites() {
   const box = document.getElementById('favorites-body');
   if (!box) return;
+
   const favs = products.filter(function (p) { return favorites.includes(p.id); });
 
   if (!favs.length) {
-    box.innerHTML = '<div class="empty-state"><div class="empty-state-icon">💔</div>' +
+    box.innerHTML =
+      '<div class="empty-state">' +
+      '<div class="empty-state-icon">💔</div>' +
       '<div class="empty-state-title">Пока пусто</div>' +
-      '<div class="empty-state-text">Жми на сердечко</div></div>';
+      '<div class="empty-state-text">Жми на сердечко</div>' +
+      '</div>';
   } else {
     box.innerHTML = favs.map(function (p) {
-      return '<div class="favorite-item"><div class="favorite-item-image">' + (p.emoji || '🖤') + '</div>' +
-        '<div class="favorite-item-info"><div class="favorite-item-name">' + p.name + '</div>' +
+      return '<div class="favorite-item">' +
+        '<div class="favorite-item-image">' + (p.emoji || '🖤') + '</div>' +
+        '<div class="favorite-item-info">' +
+        '<div class="favorite-item-name">' + p.name + '</div>' +
         '<div class="favorite-item-price">' + p.price.toLocaleString() + ' ₽</div>' +
         '<div class="favorite-item-actions">' +
         '<button class="qty-btn" onclick="addToCart(' + p.id + ')">🛒</button>' +
@@ -311,12 +364,15 @@ function showFavorites() {
         '</div></div></div>';
     }).join('');
   }
+
   document.getElementById('favorites-modal').style.display = 'flex';
 }
 
-function closeFavorites() { document.getElementById('favorites-modal').style.display = 'none'; }
+function closeFavorites() {
+  document.getElementById('favorites-modal').style.display = 'none';
+}
 
-// ===== ПОИСК / ФИЛЬТРЫ =====
+// ===== ПОИСК =====
 function toggleSearch() {
   const bar = document.getElementById('search-bar');
   bar.classList.toggle('active');
@@ -334,6 +390,7 @@ function searchProducts() {
   applyFiltersAndSort();
 }
 
+// ===== ФИЛЬТРЫ / СОРТИРОВКА =====
 function filterCategory(cat) {
   currentFilter = cat;
   document.querySelectorAll('.filter-chip').forEach(function (b) {
@@ -350,7 +407,9 @@ function sortProducts() {
 }
 
 // ===== МЕНЮ =====
-function toggleMenu() { document.getElementById('side-menu').classList.toggle('active'); }
+function toggleMenu() {
+  document.getElementById('side-menu').classList.toggle('active');
+}
 
 function contactSupport() {
   toggleMenu();
@@ -361,23 +420,28 @@ function contactSupport() {
 function showAbout() {
   toggleMenu();
   const body = document.getElementById('modal-body');
-  body.innerHTML = '<div style="padding:40px;text-align:center">' +
+  if (!body) return;
+  body.innerHTML =
+    '<div style="padding:40px;text-align:center">' +
     '<div style="font-size:60px;margin-bottom:15px">🖤</div>' +
     '<h2 style="font-family:Cinzel,serif;margin-bottom:12px">m0rphine</h2>' +
     '<p style="color:var(--text-secondary)">Готический магазин уникальных вещей для тех, кто любит тёмную эстетику.</p>' +
-    '<p style="color:var(--text-muted);margin-top:15px;font-size:12px">v3.0 ULTIMATE</p></div>';
+    '<p style="color:var(--text-muted);margin-top:15px;font-size:12px">v4.0 ULTIMATE</p>' +
+    '</div>';
   document.getElementById('product-modal').style.display = 'flex';
 }
 
-// ===== СКРОЛЛ =====
+// ===== СКРОЛЛ НАВЕРХ =====
 window.addEventListener('scroll', function () {
   const btn = document.getElementById('scroll-top');
   if (btn) btn.classList.toggle('visible', window.scrollY > 300);
 });
 
-function scrollToTop() { window.scrollTo({ top: 0, behavior: 'smooth' }); }
+function scrollToTop() {
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
 
-// ===== ТОСТЫ / ЛОАДЕР =====
+// ===== УВЕДОМЛЕНИЯ =====
 function showToast(message, type) {
   const box = document.getElementById('toast-container');
   if (!box) return;
@@ -388,6 +452,7 @@ function showToast(message, type) {
   setTimeout(function () { t.remove(); }, 2500);
 }
 
+// ===== ЛОАДЕР =====
 function showLoader() {
   const l = document.getElementById('loader');
   if (l) l.classList.remove('hidden');
@@ -401,4 +466,5 @@ function hideLoader() {
   }
 }
 
+// ===== ЗАПУСК =====
 init();
