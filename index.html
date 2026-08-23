@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>m0rphine</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>m0rphine</h1>
+    <div class="cart-icon" onclick="openCart()">
+      🛒 <span id="cart-count">0</span>
+    </div>
+  </header>
+
+  <main id="products"></main>
+
+  <div id="cart-modal" class="modal">
+    <div class="modal-content">
+      <h2>Корзина</h2>
+      <div id="cart-items"></div>
+      <div class="total">Итого: <span id="total-price">0</span> ₽</div>
+      <button class="btn" onclick="checkout()">Оформить заказ</button>
+      <button class="btn-close" onclick="closeCart()">✕</button>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
