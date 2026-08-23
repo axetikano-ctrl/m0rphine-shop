@@ -1,0 +1,155 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background: #0a0a0a;
+    color: #e0e0e0;
+    font-family: 'Georgia', serif;
+    padding: 10px;
+}
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 10px;
+    border-bottom: 1px solid #3d004d;
+}
+
+header h1 {
+    color: #b366ff;
+    font-size: 28px;
+    letter-spacing: 3px;
+    text-transform: lowercase;
+    text-shadow: 0 0 10px #7a0099;
+}
+
+.cart-icon {
+    font-size: 24px;
+    cursor: pointer;
+    position: relative;
+}
+
+#cart-count {
+    background: #7a0099;
+    color: white;
+    border-radius: 50%;
+    padding: 2px 7px;
+    font-size: 12px;
+    position: absolute;
+    top: -8px;
+    right: -10px;
+}
+
+.product {
+    background: #141414;
+    border: 1px solid #2a0033;
+    border-radius: 8px;
+    margin: 12px 0;
+    overflow: hidden;
+    transition: border-color 0.3s;
+}
+
+.product:hover {
+    border-color: #7a0099;
+}
+
+.product img {
+    width: 100%;
+    height: 220px;
+    object-fit: cover;
+}
+
+.product-info {
+    padding: 12px;
+}
+
+.product-info h3 {
+    color: #d9b3ff;
+    margin-bottom: 6px;
+}
+
+.product-info p {
+    color: #888;
+    font-size: 13px;
+    margin-bottom: 10px;
+}
+
+.product-info .price {
+    color: #b366ff;
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.btn {
+    background: #3d004d;
+    color: #e0e0e0;
+    border: 1px solid #7a0099;
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: inherit;
+    width: 100%;
+    margin-top: 8px;
+    transition: all 0.3s;
+}
+
+.btn:hover {
+    background: #7a0099;
+    box-shadow: 0 0 15px #7a0099;
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal.active {
+    display: flex;
+}
+
+.modal-content {
+    background: #141414;
+    border: 1px solid #7a0099;
+    border-radius: 10px;
+    padding: 20px;
+    width: 90%;
+    max-width: 400px;
+    position: relative;
+}
+
+.cart-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid #2a0033;
+}
+
+.total {
+    font-size: 20px;
+    color: #b366ff;
+    margin: 15px 0;
+    text-align: right;
+}
+
+.btn-close {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    background: none;
+    border: none;
+    color: #b366ff;
+    font-size: 20px;
+    cursor: pointer;
+}
