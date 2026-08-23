@@ -19,13 +19,5 @@
     "price": 1800,
     "image": "https://твоя-ссылка/3.jpg",
     "description": "Длина 60 см"
-  },
-  {
-    "id": 4,
-    "name": "эвелина",
-    "price": 100,
-    "description": "дешевка",
-    "category": "accessories",
-    "emoji": "🥶"
   }
 ]
