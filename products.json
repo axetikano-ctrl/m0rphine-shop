@@ -1,23 +1,98 @@
 [
-    {
-        "id": 1,
-        "name": "Готический крест-кулон",
-        "price": 1500,
-        "image": "https://твоя-ссылка/1.jpg",
-        "description": "Серебро 925, ручная работа"
-    },
-    {
-        "id": 2,
-        "name": "Кольцо с черепом",
-        "price": 2200,
-        "image": "https://твоя-ссылка/2.jpg",
-        "description": "Нержавеющая сталь"
-    },
-    {
-        "id": 3,
-        "name": "Цепь с шипами",
-        "price": 1800,
-        "image": "https://твоя-ссылка/3.jpg",
-        "description": "Длина 60 см"
-    }
+  {
+    "id": 1,
+    "name": "Готический крест-кулон",
+    "price": 1500,
+    "description": "Серебро 925, ручная работа",
+    "category": "jewelry",
+    "emoji": "️"
+  },
+  {
+    "id": 2,
+    "name": "Кольцо с черепом",
+    "price": 2200,
+    "description": "Нержавеющая сталь, чёрное покрытие",
+    "category": "jewelry",
+    "emoji": "💀"
+  },
+  {
+    "id": 3,
+    "name": "Цепь с шипами",
+    "price": 1800,
+    "description": "Длина 60 см, металл",
+    "category": "accessories",
+    "emoji": "⛓️"
+  },
+  {
+    "id": 4,
+    "name": "Кожаный браслет",
+    "price": 950,
+    "description": "Натуральная кожа, заклёпки",
+    "category": "jewelry",
+    "emoji": "🖤"
+  },
+  {
+    "id": 5,
+    "name": "Готические перчатки",
+    "price": 1200,
+    "description": "Кружево, чёрные",
+    "category": "clothing",
+    "emoji": "🧤"
+  },
+  {
+    "id": 6,
+    "name": "Очки-авиаторы",
+    "price": 2500,
+    "description": "Чёрная оправа, UV защита",
+    "category": "accessories",
+    "emoji": "🕶️"
+  },
+  {
+    "id": 7,
+    "name": "Пояс с цепями",
+    "price": 1600,
+    "description": "Кожа, металлические цепи",
+    "category": "accessories",
+    "emoji": "🔗"
+  },
+  {
+    "id": 8,
+    "name": "Вампирские клыки",
+    "price": 450,
+    "description": "Съёмные, реалистичные",
+    "category": "accessories",
+    "emoji": "🧛"
+  },
+  {
+    "id": 9,
+    "name": "Готическая футболка",
+    "price": 1800,
+    "description": "Чёрная, принт pentagram",
+    "category": "clothing",
+    "emoji": "👕"
+  },
+  {
+    "id": 10,
+    "name": "Серьги-кинжалы",
+    "price": 1100,
+    "description": "Сталь, унисекс",
+    "category": "jewelry",
+    "emoji": "️"
+  },
+  {
+    "id": 11,
+    "name": "Колье-чокер",
+    "price": 850,
+    "description": "Бархат, крест",
+    "category": "jewelry",
+    "emoji": "📿"
+  },
+  {
+    "id": 12,
+    "name": "Рюкзак с шипами",
+    "price": 3500,
+    "description": "Экокожа, вместительный",
+    "category": "accessories",
+    "emoji": "🎒"
+  }
 ]
