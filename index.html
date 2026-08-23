@@ -1,97 +1,153 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>m0rphine — Gothic Store</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <link rel="stylesheet" href="style.css">
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="style.css?v=3">
 </head>
 <body>
-  <!-- Анимированный фон -->
-  <div class="bg-animation">
-    <div class="particle"></div>
-    <div class="particle"></div>
-    <div class="particle"></div>
-    <div class="particle"></div>
-    <div class="particle"></div>
-  </div>
+  <canvas id="bg-canvas"></canvas>
+  <div class="gradient-sphere sphere-1"></div>
+  <div class="gradient-sphere sphere-2"></div>
 
-  <!-- Шапка -->
-  <header class="header">
+  <header class="header glass">
     <div class="logo">
-      <span class="logo-plus">+</span>
-      <h1>m0rphine</h1>
+      <div class="logo-icon"><span class="plus-sign">+</span></div>
+      <div class="logo-text">
+        <h1>m0rphine</h1>
+        <span class="logo-subtitle">Gothic Store</span>
+      </div>
     </div>
-    <div class="header-actions">
-      <button class="icon-btn" onclick="toggleSearch()" title="Поиск">
-        🔍
+    <div class="header-right">
+      <button class="header-btn" onclick="showFavorites()">
+        <i class="fas fa-heart"></i>
+        <span class="badge" id="favorites-count">0</span>
       </button>
-      <button class="cart-btn" onclick="openCart()">
-        <span class="cart-icon">🛒</span>
-        <span class="cart-badge" id="cart-count">0</span>
+      <button class="header-btn" onclick="toggleSearch()">
+        <i class="fas fa-search"></i>
+      </button>
+      <button class="header-btn" onclick="openCart()">
+        <i class="fas fa-shopping-cart"></i>
+        <span class="badge" id="cart-count">0</span>
+      </button>
+      <button class="header-btn" onclick="toggleMenu()">
+        <i class="fas fa-bars"></i>
       </button>
     </div>
   </header>
 
-  <!-- Поиск -->
-  <div class="search-container" id="search-container">
-    <input type="text" id="search-input" placeholder="Поиск товаров..." oninput="searchProducts()">
+  <div class="search-bar" id="search-bar">
+    <div class="search-input-wrapper">
+      <i class="fas fa-search"></i>
+      <input type="text" id="search-input" placeholder="Поиск товаров..." oninput="searchProducts()">
+      <button class="clear-search" onclick="clearSearch()"><i class="fas fa-times"></i></button>
+    </div>
   </div>
 
-  <!-- Фильтры -->
-  <div class="filters">
-    <button class="filter-btn active" onclick="filterCategory('all')">Все</button>
-    <button class="filter-btn" onclick="filterCategory('jewelry')">Украшения</button>
-    <button class="filter-btn" onclick="filterCategory('clothing')">Одежда</button>
-    <button class="filter-btn" onclick="filterCategory('accessories')">Аксессуары</button>
+  <div class="filters-container">
+    <div class="filters-wrapper">
+      <button class="filter-chip active" data-category="all" onclick="filterCategory('all')"><i class="fas fa-th-large"></i> Все</button>
+      <button class="filter-chip" data-category="jewelry" onclick="filterCategory('jewelry')"><i class="fas fa-gem"></i> Украшения</button>
+      <button class="filter-chip" data-category="clothing" onclick="filterCategory('clothing')"><i class="fas fa-tshirt"></i> Одежда</button>
+      <button class="filter-chip" data-category="accessories" onclick="filterCategory('accessories')"><i class="fas fa-link"></i> Аксессуары</button>
+    </div>
   </div>
 
-  <!-- Сортировка -->
-  <div class="sort-container">
-    <select id="sort-select" onchange="sortProducts()">
-      <option value="default">Сортировка</option>
-      <option value="price-asc">Цена: по возрастанию</option>
-      <option value="price-desc">Цена: по убыванию</option>
-      <option value="name">По названию</option>
-    </select>
+  <div class="toolbar">
+    <div class="products-count" id="products-count">Загрузка...</div>
+    <div class="sort-wrapper">
+      <select id="sort-select" class="sort-select" onchange="sortProducts()">
+        <option value="default">Сортировка</option>
+        <option value="price-asc">Дешевле → дороже</option>
+        <option value="price-desc">Дороже → дешевле</option>
+        <option value="name">По названию</option>
+        <option value="newest">Новинки</option>
+      </select>
+    </div>
   </div>
 
-  <!-- Товары -->
-  <main id="products" class="products-grid"></main>
+  <main class="products-container">
+    <div class="products-grid" id="products-grid"></div>
+  </main>
 
-  <!-- Корзина -->
-  <div id="cart-modal" class="modal">
+  <div class="product-modal" id="product-modal">
+    <div class="modal-overlay" onclick="closeProductModal()"></div>
     <div class="modal-content">
-      <div class="modal-header">
-        <h2>🛒 Корзина</h2>
-        <button class="close-btn" onclick="closeCart()">✕</button>
+      <button class="modal-close" onclick="closeProductModal()"><i class="fas fa-times"></i></button>
+      <div id="modal-body"></div>
+    </div>
+  </div>
+
+  <div class="cart-modal" id="cart-modal">
+    <div class="modal-overlay" onclick="closeCart()"></div>
+    <div class="cart-content">
+      <div class="cart-header">
+        <h2><i class="fas fa-shopping-cart"></i> Корзина</h2>
+        <button class="modal-close" onclick="closeCart()"><i class="fas fa-times"></i></button>
       </div>
-      <div id="cart-items" class="cart-items"></div>
+      <div class="cart-body"><div id="cart-items"></div></div>
       <div class="cart-footer">
-        <div class="total">
-          <span>Итого:</span>
-          <span id="total-price">0 ₽</span>
-        </div>
-        <button class="checkout-btn" onclick="checkout()">
-          Оформить заказ 
-        </button>
-        <button class="clear-cart-btn" onclick="clearCart()">
-          Очистить корзину
-        </button>
+        <div class="summary-row"><span>Товары:</span><span id="cart-subtotal">0 ₽</span></div>
+        <div class="summary-row"><span>Доставка:</span><span class="free-shipping">Бесплатно</span></div>
+        <div class="summary-divider"></div>
+        <div class="summary-row total"><span>Итого:</span><span id="cart-total">0 ₽</span></div>
+        <button class="checkout-btn" onclick="checkout()"><i class="fas fa-credit-card"></i> Оформить заказ</button>
+        <button class="continue-shopping" onclick="closeCart()">Продолжить покупки</button>
       </div>
     </div>
   </div>
 
-  <!-- Уведомления -->
-  <div id="toast-container" class="toast-container"></div>
-
-  <!-- Загрузка -->
-  <div id="loader" class="loader">
-    <div class="loader-spinner"></div>
+  <div class="favorites-modal" id="favorites-modal">
+    <div class="modal-overlay" onclick="closeFavorites()"></div>
+    <div class="favorites-content">
+      <div class="favorites-header">
+        <h2><i class="fas fa-heart"></i> Избранное</h2>
+        <button class="modal-close" onclick="closeFavorites()"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="favorites-body" id="favorites-body"></div>
+    </div>
   </div>
 
-  <script src="app.js"></script>
+  <div class="toast-container" id="toast-container"></div>
+
+  <div class="loader" id="loader">
+    <div class="loader-content">
+      <div class="loader-spinner"></div>
+      <p class="loader-text">m0rphine</p>
+    </div>
+  </div>
+
+  <button class="scroll-top" id="scroll-top" onclick="scrollToTop()"><i class="fas fa-arrow-up"></i></button>
+
+  <div class="side-menu" id="side-menu">
+    <div class="menu-overlay" onclick="toggleMenu()"></div>
+    <div class="menu-content">
+      <div class="menu-header">
+        <h2>Меню</h2>
+        <button class="close-menu" onclick="toggleMenu()"><i class="fas fa-times"></i></button>
+      </div>
+      <nav class="menu-nav">
+        <a class="menu-item" onclick="filterCategory('all')"><i class="fas fa-th-large"></i> Все товары</a>
+        <a class="menu-item" onclick="filterCategory('jewelry')"><i class="fas fa-gem"></i> Украшения</a>
+        <a class="menu-item" onclick="filterCategory('clothing')"><i class="fas fa-tshirt"></i> Одежда</a>
+        <a class="menu-item" onclick="filterCategory('accessories')"><i class="fas fa-link"></i> Аксессуары</a>
+        <div class="menu-divider"></div>
+        <a class="menu-item" onclick="showFavorites()"><i class="fas fa-heart"></i> Избранное</a>
+        <a class="menu-item" onclick="viewCart()"><i class="fas fa-shopping-cart"></i> Корзина</a>
+        <div class="menu-divider"></div>
+        <a class="menu-item" onclick="contactSupport()"><i class="fas fa-headset"></i> Поддержка</a>
+        <a class="menu-item" onclick="showAbout()"><i class="fas fa-info-circle"></i> О магазине</a>
+      </nav>
+      <div class="menu-footer"><p class="version">m0rphine v3.0</p></div>
+    </div>
+  </div>
+
+  <script src="app.js?v=3"></script>
 </body>
 </html>
