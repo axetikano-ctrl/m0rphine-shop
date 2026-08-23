@@ -1,377 +1,404 @@
- const tg = window.Telegram.WebApp;
-tg.expand();
-tg.ready();
-try { tg.setHeaderColor('#050508'); tg.setBackgroundColor('#050508'); } catch(e) {}
+ let tg = null;
+try {
+  tg = window.Telegram.WebApp;
+  tg.expand();
+  tg.ready();
+} catch (e) { console.log('Not in Telegram'); }
 
-const SUPPORT_URL = 'https://t.me/m0rphine_support';
-const CATEGORY_NAMES = { jewelry: 'Украшения', clothing: 'Одежда', accessories: 'Аксессуары' };
+function haptic(type) {
+  try { tg.HapticFeedback.impactOccurred(type || 'light'); } catch (e) {}
+}
+
+function storageGet(key, def) {
+  try { return JSON.parse(localStorage.getItem(key)) || def; } catch (e) { return def; }
+}
+function storageSet(key, val) {
+  try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) {}
+}
 
 let products = [];
-let cart = JSON.parse(localStorage.getItem('m0rphine_cart') || '[]');
-let favorites = JSON.parse(localStorage.getItem('m0rphine_favs') || '[]');
+let cart = storageGet('m0rphine_cart', []);
+let favorites = storageGet('m0rphine_favs', []);
 let currentFilter = 'all';
 let currentSort = 'default';
 let searchQuery = '';
 
-/* ===== CANVAS ФОН ===== */
+// ===== ФОН =====
 const canvas = document.getElementById('bg-canvas');
-const ctx = canvas.getContext('2d');
+let ctx = null;
 let particles = [];
 
 function resizeCanvas() {
+  if (!canvas) return;
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
 }
-window.addEventListener('resize', () => { resizeCanvas(); initParticles(); });
-resizeCanvas();
 
 function initParticles() {
   particles = [];
-  const count = Math.floor((canvas.width * canvas.height) / 20000);
+  const count = Math.min(50, Math.floor(window.innerWidth / 15));
   for (let i = 0; i < count; i++) {
     particles.push({
-      x: Math.random() * canvas.width, y: Math.random() * canvas.height,
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
       r: Math.random() * 2 + 0.5,
-      dx: (Math.random() - 0.5) * 0.4, dy: (Math.random() - 0.5) * 0.4,
-      o: Math.random() * 0.5 + 0.1
+      dx: (Math.random() - 0.5) * 0.4,
+      dy: (Math.random() - 0.5) * 0.4,
+      hue: Math.random() > 0.5 ? 280 : 190
     });
   }
 }
-initParticles();
 
-function animate() {
+function animateParticles() {
+  if (!ctx) return;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  for (const p of particles) {
+  particles.forEach(function (p) {
     p.x += p.dx; p.y += p.dy;
     if (p.x < 0 || p.x > canvas.width) p.dx *= -1;
     if (p.y < 0 || p.y > canvas.height) p.dy *= -1;
     ctx.beginPath();
     ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-    ctx.fillStyle = `rgba(157, 0, 255, ${p.o})`;
+    ctx.fillStyle = 'hsla(' + p.hue + ', 100%, 60%, 0.4)';
     ctx.fill();
-  }
-  for (let i = 0; i < particles.length; i++) {
-    for (let j = i + 1; j < particles.length; j++) {
-      const d = Math.hypot(particles[i].x - particles[j].x, particles[i].y - particles[j].y);
-      if (d < 100) {
-        ctx.strokeStyle = `rgba(157, 0, 255, ${0.15 * (1 - d / 100)})`;
-        ctx.lineWidth = 0.5;
-        ctx.beginPath();
-        ctx.moveTo(particles[i].x, particles[i].y);
-        ctx.lineTo(particles[j].x, particles[j].y);
-        ctx.stroke();
-      }
-    }
-  }
-  requestAnimationFrame(animate);
+  });
+  requestAnimationFrame(animateParticles);
 }
-animate();
 
-/* ===== ЗАГРУЗКА ===== */
+if (canvas) {
+  ctx = canvas.getContext('2d');
+  resizeCanvas();
+  window.addEventListener('resize', resizeCanvas);
+  initParticles();
+  animateParticles();
+}
+
+// ===== СТАРТ =====
 async function init() {
+  showLoader();
   try {
-    const res = await fetch('products.json?t=' + Date.now());
+    const res = await fetch('products.json');
     products = await res.json();
   } catch (e) {
     showToast('Ошибка загрузки товаров', 'error');
   }
-  renderProducts();
+  applyFiltersAndSort();
   updateBadges();
-  document.getElementById('loader').classList.add('hidden');
+  hideLoader();
 }
 
-/* ===== РЕНДЕР ТОВАРОВ ===== */
-function getFiltered() {
-  let list = [...products];
-  if (currentFilter !== 'all') list = list.filter(p => p.category === currentFilter);
-  if (searchQuery) {
-    list = list.filter(p =>
-      (p.name + ' ' + p.description).toLowerCase().includes(searchQuery));
+// ===== ТОВАРЫ =====
+function categoryName(c) {
+  const map = { jewelry: 'Украшения', clothing: 'Одежда', accessories: 'Аксессуары' };
+  return map[c] || c;
+}
+
+function applyFiltersAndSort() {
+  let list = products.slice();
+
+  if (currentFilter !== 'all') {
+    list = list.filter(function (p) { return p.category === currentFilter; });
   }
-  if (currentSort === 'price-asc') list.sort((a, b) => a.price - b.price);
-  if (currentSort === 'price-desc') list.sort((a, b) => b.price - a.price);
-  if (currentSort === 'name') list.sort((a, b) => a.name.localeCompare(b.name));
-  if (currentSort === 'newest') list.sort((a, b) => (b.badge === 'NEW') - (a.badge === 'NEW'));
-  return list;
+  if (searchQuery) {
+    list = list.filter(function (p) {
+      return p.name.toLowerCase().includes(searchQuery) ||
+             p.description.toLowerCase().includes(searchQuery);
+    });
+  }
+
+  if (currentSort === 'price-asc') list.sort(function (a, b) { return a.price - b.price; });
+  if (currentSort === 'price-desc') list.sort(function (a, b) { return b.price - a.price; });
+  if (currentSort === 'name') list.sort(function (a, b) { return a.name.localeCompare(b.name); });
+  if (currentSort === 'newest') list.sort(function (a, b) { return b.id - a.id; });
+
+  const counter = document.getElementById('products-count');
+  if (counter) counter.textContent = 'Товаров: ' + list.length;
+  renderProducts(list);
 }
 
-function renderProducts() {
-  const list = getFiltered();
-  document.getElementById('products-count').textContent = `Товаров: ${list.length}`;
+function renderProducts(list) {
   const grid = document.getElementById('products-grid');
+  if (!grid) return;
+
   if (!list.length) {
-    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
-      <div class="empty-state-icon">🕸️</div>
-      <div class="empty-state-title">Ничего не найдено</div>
-      <div class="empty-state-text">Попробуй изменить фильтры или поиск</div>
-    </div>`;
+    grid.innerHTML =
+      '<div class="empty-state" style="grid-column:1/-1">' +
+      '<div class="empty-state-icon">🕸️</div>' +
+      '<div class="empty-state-title">Ничего не найдено</div>' +
+      '<div class="empty-state-text">Попробуй другие фильтры</div></div>';
     return;
   }
-  grid.innerHTML = list.map((p, i) => `
-    <div class="product-card" style="animation-delay:${i * 0.06}s" onclick="openProduct(${p.id})">
-      <div class="product-image-wrapper">
-        ${p.image ? `<img class="product-image" src="${p.image}" alt="">`
-                  : `<div class="product-emoji">${p.emoji || '🖤'}</div>`}
-        ${p.badge ? `<span class="product-badge">${p.badge}</span>` : ''}
-        <button class="product-favorite-btn ${favorites.includes(p.id) ? 'active' : ''}"
-          onclick="event.stopPropagation(); toggleFavorite(${p.id})">
-          <i class="fas fa-heart"></i>
-        </button>
-      </div>
-      <div class="product-info">
-        <div class="product-category">${CATEGORY_NAMES[p.category] || ''}</div>
-        <h3 class="product-name">${p.name}</h3>
-        <p class="product-description">${p.description}</p>
-        <div class="product-footer">
-          <div class="product-price">${p.price.toLocaleString('ru-RU')} ₽</div>
-          <button class="add-to-cart-btn" onclick="event.stopPropagation(); addToCart(${p.id})">
-            <i class="fas fa-plus"></i>
-          </button>
-        </div>
-      </div>
-    </div>`).join('');
+
+  grid.innerHTML = list.map(function (p, i) {
+    const img = p.image
+      ? '<img class="product-image" src="' + p.image + '" alt="">'
+      : '<div class="product-emoji">' + (p.emoji || '🖤') + '</div>';
+    const badge = p.badge ? '<div class="product-badge">' + p.badge + '</div>' : '';
+    const fav = favorites.includes(p.id) ? ' active' : '';
+    return '<div class="product-card" style="animation-delay:' + (i * 0.06) + 's" onclick="openProduct(' + p.id + ')">' +
+      '<div class="product-image-wrapper">' + img + badge +
+      '<button class="product-favorite-btn' + fav + '" onclick="event.stopPropagation(); toggleFavorite(' + p.id + ')"><i class="fas fa-heart"></i></button></div>' +
+      '<div class="product-info">' +
+      '<div class="product-category">' + categoryName(p.category) + '</div>' +
+      '<div class="product-name">' + p.name + '</div>' +
+      '<div class="product-description">' + p.description + '</div>' +
+      '<div class="product-footer">' +
+      '<div class="product-price">' + p.price.toLocaleString() + ' ₽</div>' +
+      '<button class="add-to-cart-btn" onclick="event.stopPropagation(); addToCart(' + p.id + ')"><i class="fas fa-plus"></i></button>' +
+      '</div></div></div>';
+  }).join('');
 }
 
-/* ===== КАРТОЧКА ТОВАРА ===== */
 function openProduct(id) {
-  const p = products.find(x => x.id === id);
+  const p = products.find(function (x) { return x.id === id; });
   if (!p) return;
-  document.getElementById('modal-body').innerHTML = `
-    <div class="product-detail">
-      <div class="product-detail-image">
-        ${p.image ? `<img src="${p.image}" alt="">` : (p.emoji || '🖤')}
-      </div>
-      <div class="product-category">${CATEGORY_NAMES[p.category] || ''}</div>
-      <h2 class="detail-name">${p.name}</h2>
-      <p class="detail-desc">${p.description}</p>
-      <div class="detail-price">${p.price.toLocaleString('ru-RU')} ₽</div>
-      <div class="detail-actions">
-        <button class="detail-fav" onclick="toggleFavorite(${p.id})">
-          <i class="fas fa-heart"></i>
-        </button>
-        <button class="detail-add" onclick="addToCart(${p.id}); closeProductModal();">
-          <i class="fas fa-cart-plus"></i> В корзину
-        </button>
-      </div>
-    </div>`;
-  document.getElementById('product-modal').classList.add('active');
-  tg.HapticFeedback.impactOccurred('light');
+  const img = p.image
+    ? '<img class="product-image" src="' + p.image + '" style="height:230px">'
+    : '<div class="product-emoji" style="height:230px;display:flex;align-items:center;justify-content:center">' + (p.emoji || '🖤') + '</div>';
+  const body = document.getElementById('modal-body');
+  if (!body) return;
+  body.innerHTML = img +
+    '<div style="padding:22px">' +
+    '<div class="product-category">' + categoryName(p.category) + '</div>' +
+    '<h2 style="font-family:Cinzel,serif;margin:8px 0">' + p.name + '</h2>' +
+    '<p style="color:var(--text-secondary);margin-bottom:15px">' + p.description + '</p>' +
+    '<div class="product-price" style="font-size:26px;margin-bottom:18px">' + p.price.toLocaleString() + ' ₽</div>' +
+    '<button class="checkout-btn" onclick="addToCart(' + p.id + '); closeProductModal()"><i class="fas fa-cart-plus"></i> В корзину</button>' +
+    '</div>';
+  document.getElementById('product-modal').style.display = 'flex';
+  haptic();
 }
 
 function closeProductModal() {
-  document.getElementById('product-modal').classList.remove('active');
+  document.getElementById('product-modal').style.display = 'none';
 }
 
-/* ===== КОРЗИНА ===== */
+// ===== КОРЗИНА =====
 function addToCart(id) {
-  const item = cart.find(i => i.id === id);
-  if (item) item.qty++;
-  else {
-    const p = products.find(x => x.id === id);
-    cart.push({ ...p, qty: 1 });
-  }
+  const p = products.find(function (x) { return x.id === id; });
+  if (!p) return;
+  const item = cart.find(function (i) { return i.id === id; });
+  if (item) item.quantity += 1;
+  else cart.push({ id: p.id, name: p.name, price: p.price, emoji: p.emoji, image: p.image, quantity: 1 });
   saveCart();
-  updateBadges();
-  renderCart();
-  showToast('✅ Добавлено в корзину', 'success');
-  tg.HapticFeedback.impactOccurred('medium');
+  showToast('✅ Добавлено в корзину');
+  haptic('medium');
 }
 
 function changeQty(id, delta) {
-  const item = cart.find(i => i.id === id);
+  const item = cart.find(function (i) { return i.id === id; });
   if (!item) return;
-  item.qty += delta;
-  if (item.qty < 1) item.qty = 1;
-  saveCart(); updateBadges(); renderCart();
+  item.quantity += delta;
+  if (item.quantity <= 0) cart = cart.filter(function (i) { return i.id !== id; });
+  saveCart();
+  renderCart();
 }
 
 function removeFromCart(id) {
-  cart = cart.filter(i => i.id !== id);
-  saveCart(); updateBadges(); renderCart();
-  showToast('🗑️ Удалено из корзины', 'success');
+  cart = cart.filter(function (i) { return i.id !== id; });
+  saveCart();
+  renderCart();
+  showToast('🗑️ Удалено');
 }
 
-function renderCart() {
-  const box = document.getElementById('cart-items');
-  if (!cart.length) {
-    box.innerHTML = `<div class="empty-state">
-      <div class="empty-state-icon">🛒</div>
-      <div class="empty-state-title">Корзина пуста</div>
-      <div class="empty-state-text">Добавь что-нибудь тёмное и красивое</div>
-    </div>`;
-  } else {
-    box.innerHTML = cart.map(i => `
-      <div class="cart-item">
-        <div class="cart-item-image">${i.image ? '🛍️' : (i.emoji || '🖤')}</div>
-        <div class="cart-item-info">
-          <div class="cart-item-name">${i.name}</div>
-          <div class="cart-item-price">${(i.price * i.qty).toLocaleString('ru-RU')} ₽</div>
-          <div class="cart-item-quantity">
-            <button class="qty-btn" onclick="changeQty(${i.id}, -1)">−</button>
-            <span>${i.qty}</span>
-            <button class="qty-btn" onclick="changeQty(${i.id}, 1)">+</button>
-          </div>
-        </div>
-        <button class="remove-btn" onclick="removeFromCart(${i.id})">
-          <i class="fas fa-trash"></i>
-        </button>
-      </div>`).join('');
-  }
-  const total = cart.reduce((s, i) => s + i.price * i.qty, 0);
-  document.getElementById('cart-subtotal').textContent = total.toLocaleString('ru-RU') + ' ₽';
-  document.getElementById('cart-total').textContent = total.toLocaleString('ru-RU') + ' ₽';
+function saveCart() {
+  storageSet('m0rphine_cart', cart);
+  updateBadges();
+}
+
+function updateBadges() {
+  const count = cart.reduce(function (s, i) { return s + i.quantity; }, 0);
+  const c = document.getElementById('cart-count');
+  const f = document.getElementById('favorites-count');
+  if (c) c.textContent = count;
+  if (f) f.textContent = favorites.length;
 }
 
 function openCart() {
-  closeMenu();
   renderCart();
-  document.getElementById('cart-modal').classList.add('active');
+  document.getElementById('cart-modal').style.display = 'flex';
 }
-function viewCart() { openCart(); }
-function closeCart() { document.getElementById('cart-modal').classList.remove('active'); }
+function viewCart() { toggleMenu(); openCart(); }
+function closeCart() { document.getElementById('cart-modal').style.display = 'none'; }
+
+function renderCart() {
+  const box = document.getElementById('cart-items');
+  if (!box) return;
+
+  if (!cart.length) {
+    box.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🛒</div>' +
+      '<div class="empty-state-title">Корзина пуста</div>' +
+      '<div class="empty-state-text">Добавь что-нибудь тёмное</div></div>';
+  } else {
+    box.innerHTML = cart.map(function (i) {
+      const img = i.image
+        ? '<img src="' + i.image + '" style="width:100%;height:100%;object-fit:cover">'
+        : (i.emoji || '🖤');
+      return '<div class="cart-item"><div class="cart-item-image">' + img + '</div>' +
+        '<div class="cart-item-info"><div class="cart-item-name">' + i.name + '</div>' +
+        '<div class="cart-item-price">' + (i.price * i.quantity).toLocaleString() + ' ₽</div>' +
+        '<div class="cart-item-quantity">' +
+        '<button class="qty-btn" onclick="changeQty(' + i.id + ', -1)">−</button>' +
+        '<span>' + i.quantity + '</span>' +
+        '<button class="qty-btn" onclick="changeQty(' + i.id + ', 1)">+</button>' +
+        '<button class="remove-btn" onclick="removeFromCart(' + i.id + ')">🗑</button>' +
+        '</div></div></div>';
+    }).join('');
+  }
+
+  const total = cart.reduce(function (s, i) { return s + i.price * i.quantity; }, 0);
+  const sub = document.getElementById('cart-subtotal');
+  const tot = document.getElementById('cart-total');
+  if (sub) sub.textContent = total.toLocaleString() + ' ₽';
+  if (tot) tot.textContent = total.toLocaleString() + ' ₽';
+}
 
 function checkout() {
-  if (!cart.length) return showToast('❌ Корзина пуста!', 'error');
-  const order = cart.map(i => `${i.name} ×${i.qty}`).join(', ');
-  const total = cart.reduce((s, i) => s + i.price * i.qty, 0);
-  tg.sendData(JSON.stringify({ order, total, items: cart.length }));
-  showToast('✅ Заказ отправлен!', 'success');
+  if (!cart.length) { showToast('Корзина пуста!', 'error'); return; }
+  const total = cart.reduce(function (s, i) { return s + i.price * i.quantity; }, 0);
+  const itemsCount = cart.reduce(function (s, i) { return s + i.quantity; }, 0);
+  const orderText = cart.map(function (i) { return i.name + ' ×' + i.quantity; }).join(', ');
+  let username = 'unknown';
+  try {
+    const u = tg.initDataUnsafe.user || {};
+    username = u.username || u.first_name || 'unknown';
+  } catch (e) {}
+
+  try {
+    tg.sendData(JSON.stringify({ order: orderText, total: total, items: itemsCount, user: username }));
+  } catch (e) {
+    showToast('Заказ: ' + orderText);
+  }
+
   cart = [];
-  saveCart(); updateBadges(); closeCart();
-  setTimeout(() => tg.close(), 800);
+  saveCart();
+  closeCart();
+  showToast('✅ Заказ отправлен!');
+  setTimeout(function () { try { tg.close(); } catch (e) {} }, 900);
 }
 
-/* ===== ИЗБРАННОЕ ===== */
+// ===== ИЗБРАННОЕ =====
 function toggleFavorite(id) {
   if (favorites.includes(id)) {
-    favorites = favorites.filter(f => f !== id);
-    showToast('💔 Удалено из избранного', 'success');
+    favorites = favorites.filter(function (f) { return f !== id; });
+    showToast('💔 Удалено из избранного');
   } else {
     favorites.push(id);
-    showToast('❤️ Добавлено в избранное', 'success');
+    showToast('❤️ В избранном!');
   }
-  localStorage.setItem('m0rphine_favs', JSON.stringify(favorites));
-  updateBadges(); renderProducts();
-  if (document.getElementById('favorites-modal').classList.contains('active')) renderFavorites();
-  tg.HapticFeedback.impactOccurred('light');
+  storageSet('m0rphine_favs', favorites);
+  updateBadges();
+  applyFiltersAndSort();
+  haptic();
 }
 
-function renderFavorites() {
+function showFavorites() {
   const box = document.getElementById('favorites-body');
-  const list = products.filter(p => favorites.includes(p.id));
-  if (!list.length) {
-    box.innerHTML = `<div class="empty-state">
-      <div class="empty-state-icon">💔</div>
-      <div class="empty-state-title">Избранное пусто</div>
-      <div class="empty-state-text">Нажимай на сердечко, чтобы сохранять</div>
-    </div>`;
-    return;
+  if (!box) return;
+  const favs = products.filter(function (p) { return favorites.includes(p.id); });
+
+  if (!favs.length) {
+    box.innerHTML = '<div class="empty-state"><div class="empty-state-icon">💔</div>' +
+      '<div class="empty-state-title">Пока пусто</div>' +
+      '<div class="empty-state-text">Жми на сердечко</div></div>';
+  } else {
+    box.innerHTML = favs.map(function (p) {
+      return '<div class="favorite-item"><div class="favorite-item-image">' + (p.emoji || '🖤') + '</div>' +
+        '<div class="favorite-item-info"><div class="favorite-item-name">' + p.name + '</div>' +
+        '<div class="favorite-item-price">' + p.price.toLocaleString() + ' ₽</div>' +
+        '<div class="favorite-item-actions">' +
+        '<button class="qty-btn" onclick="addToCart(' + p.id + ')">🛒</button>' +
+        '<button class="remove-btn" onclick="toggleFavorite(' + p.id + '); showFavorites()">Убрать</button>' +
+        '</div></div></div>';
+    }).join('');
   }
-  box.innerHTML = list.map(p => `
-    <div class="favorite-item">
-      <div class="favorite-item-image">${p.emoji || '🖤'}</div>
-      <div class="favorite-item-info">
-        <div class="favorite-item-name">${p.name}</div>
-        <div class="favorite-item-price">${p.price.toLocaleString('ru-RU')} ₽</div>
-        <div class="favorite-item-actions">
-          <button class="add-to-cart-btn" style="width:auto;padding:8px 15px"
-            onclick="addToCart(${p.id})"><i class="fas fa-cart-plus"></i></button>
-          <button class="remove-btn" onclick="toggleFavorite(${p.id})">
-            <i class="fas fa-heart-crack"></i>
-          </button>
-        </div>
-      </div>
-    </div>`).join('');
+  document.getElementById('favorites-modal').style.display = 'flex';
 }
 
-function showFavorites() { closeMenu(); renderFavorites();
-  document.getElementById('favorites-modal').classList.add('active'); }
-function toggleFavorites() { showFavorites(); }
-function closeFavorites() { document.getElementById('favorites-modal').classList.remove('active'); }
+function closeFavorites() { document.getElementById('favorites-modal').style.display = 'none'; }
 
-/* ===== ФИЛЬТРЫ / ПОИСК / СОРТИРОВКА ===== */
-function filterCategory(cat) {
-  currentFilter = cat;
-  document.querySelectorAll('.filter-chip').forEach(b =>
-    b.classList.toggle('active', b.dataset.category === cat));
-  closeMenu();
-  renderProducts();
-}
-
-function searchProducts() {
-  searchQuery = document.getElementById('search-input').value.toLowerCase().trim();
-  renderProducts();
-}
-
-function clearSearch() {
-  document.getElementById('search-input').value = '';
-  searchQuery = '';
-  renderProducts();
-}
-
+// ===== ПОИСК / ФИЛЬТРЫ =====
 function toggleSearch() {
   const bar = document.getElementById('search-bar');
   bar.classList.toggle('active');
   if (bar.classList.contains('active')) document.getElementById('search-input').focus();
 }
 
-function sortProducts() {
-  currentSort = document.getElementById('sort-select').value;
-  renderProducts();
+function clearSearch() {
+  document.getElementById('search-input').value = '';
+  searchQuery = '';
+  applyFiltersAndSort();
 }
 
-/* ===== МЕНЮ ===== */
+function searchProducts() {
+  searchQuery = document.getElementById('search-input').value.toLowerCase().trim();
+  applyFiltersAndSort();
+}
+
+function filterCategory(cat) {
+  currentFilter = cat;
+  document.querySelectorAll('.filter-chip').forEach(function (b) {
+    b.classList.toggle('active', b.dataset.category === cat);
+  });
+  applyFiltersAndSort();
+  const menu = document.getElementById('side-menu');
+  if (menu.classList.contains('active')) toggleMenu();
+}
+
+function sortProducts() {
+  currentSort = document.getElementById('sort-select').value;
+  applyFiltersAndSort();
+}
+
+// ===== МЕНЮ =====
 function toggleMenu() { document.getElementById('side-menu').classList.toggle('active'); }
-function closeMenu() { document.getElementById('side-menu').classList.remove('active'); }
 
 function contactSupport() {
-  closeMenu();
-  try { tg.openTelegramLink(SUPPORT_URL); }
-  catch(e) { showToast('💬 Поддержка: ' + SUPPORT_URL, 'success'); }
+  toggleMenu();
+  try { tg.openTelegramLink('https://t.me/m0rphine_support'); }
+  catch (e) { showToast('Поддержка: @m0rphine_support'); }
 }
 
 function showAbout() {
-  closeMenu();
-  document.getElementById('modal-body').innerHTML = `
-    <div class="product-detail">
-      <div class="product-detail-image">🖤</div>
-      <h2 class="detail-name">m0rphine</h2>
-      <p class="detail-desc">
-        Готический магазин уникальных вещей.<br><br>
-        ⚰️ Украшения ручной работы<br>
-        🕸 Одежда и аксессуары<br>
-        🦇 Доставка по всей стране<br><br>
-        Все вещи отбираются вручную и несут тёмную эстетику.
-      </p>
-      <button class="detail-add" onclick="closeProductModal()">
-        <i class="fas fa-check"></i> Понятно
-      </button>
-    </div>`;
-  document.getElementById('product-modal').classList.add('active');
+  toggleMenu();
+  const body = document.getElementById('modal-body');
+  body.innerHTML = '<div style="padding:40px;text-align:center">' +
+    '<div style="font-size:60px;margin-bottom:15px">🖤</div>' +
+    '<h2 style="font-family:Cinzel,serif;margin-bottom:12px">m0rphine</h2>' +
+    '<p style="color:var(--text-secondary)">Готический магазин уникальных вещей для тех, кто любит тёмную эстетику.</p>' +
+    '<p style="color:var(--text-muted);margin-top:15px;font-size:12px">v3.0 ULTIMATE</p></div>';
+  document.getElementById('product-modal').style.display = 'flex';
 }
 
-/* ===== СЛУЖЕБНОЕ ===== */
-function saveCart() { localStorage.setItem('m0rphine_cart', JSON.stringify(cart)); }
-
-function updateBadges() {
-  const cc = cart.reduce((s, i) => s + i.qty, 0);
-  document.getElementById('cart-count').textContent = cc;
-  document.getElementById('favorites-count').textContent = favorites.length;
-}
-
-function showToast(message, type = 'success') {
-  const box = document.getElementById('toast-container');
-  const t = document.createElement('div');
-  t.className = `toast ${type}`;
-  t.innerHTML = `<i class="fas ${type === 'error' ? 'fa-circle-exclamation' : 'fa-circle-check'}"></i>${message}`;
-  box.appendChild(t);
-  setTimeout(() => t.remove(), 3000);
-}
+// ===== СКРОЛЛ =====
+window.addEventListener('scroll', function () {
+  const btn = document.getElementById('scroll-top');
+  if (btn) btn.classList.toggle('visible', window.scrollY > 300);
+});
 
 function scrollToTop() { window.scrollTo({ top: 0, behavior: 'smooth' }); }
 
-window.addEventListener('scroll', () => {
-  document.getElementById('scroll-top').classList.toggle('visible', window.scrollY > 300);
-});
+// ===== ТОСТЫ / ЛОАДЕР =====
+function showToast(message, type) {
+  const box = document.getElementById('toast-container');
+  if (!box) return;
+  const t = document.createElement('div');
+  t.className = 'toast' + (type === 'error' ? ' error' : '');
+  t.textContent = message;
+  box.appendChild(t);
+  setTimeout(function () { t.remove(); }, 2500);
+}
+
+function showLoader() {
+  const l = document.getElementById('loader');
+  if (l) l.classList.remove('hidden');
+}
+
+function hideLoader() {
+  const l = document.getElementById('loader');
+  if (l) {
+    l.classList.add('hidden');
+    setTimeout(function () { l.style.display = 'none'; }, 600);
+  }
+}
 
 init();
